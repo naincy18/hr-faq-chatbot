@@ -60,35 +60,55 @@ for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
+
+
+
+# --- Clear chat button ---
+if st.sidebar.button("🗑️ Clear chat"):
+    st.session_state.messages = []
+    st.rerun()
+
+
+
 user_question = st.chat_input("Type your HR question here...")
 
 if user_question:
-    st.session_state.messages.append({"role": "user", "content": user_question})
-    with st.chat_message("user"):
-        st.markdown(user_question)
+    user_question = user_question.strip()
 
-    with st.chat_message("assistant"):
-        with st.spinner("Checking HR policies..."):
-            results = retriever.retrieve(user_question, top_k=1)
-            top_result = results[0]
-            response = build_response(top_result, user_question)
+    # Edge case: reject empty or extremely short/uninformative input
+    if len(user_question) < 3:
+        st.session_state.messages.append({"role": "user", "content": user_question})
+        st.session_state.messages.append({
+            "role": "assistant",
+            "content": "Could you provide a bit more detail in your question so I can help?"
+        })
+        st.rerun()
 
-            # Log every interaction, regardless of confidence level or handoff
-            log_interaction(role, user_question, response)
+    else:
+        st.session_state.messages.append({"role": "user", "content": user_question})
+        with st.chat_message("user"):
+            st.markdown(user_question)
 
-        if response["handoff"]:
-            reply_text = response["answer_text"]
-        else:
-            reply_text = response["answer_text"]
-            reply_text += f"\n\n**Source:** {response['source_reference']} → `{response['policy_id']}`"
-            reply_text += f"\n**Form:** {response['related_form']}"
+        with st.chat_message("assistant"):
+            with st.spinner("Checking HR policies..."):
+                results = retriever.retrieve(user_question, top_k=1)
+                top_result = results[0]
+                response = build_response(top_result, user_question)
+                log_interaction(role, user_question, response)
 
-        if role in ("HR Staff", "HR Admin"):
-            reply_text += (
-                f"\n\n---\n*[Staff view] Confidence: {response['confidence_level']} "
-                f"(score: {response['score']:.3f})*"
-            )
+            if response["handoff"]:
+                reply_text = response["answer_text"]
+            else:
+                reply_text = response["answer_text"]
+                reply_text += f"\n\n**Source:** {response['source_reference']} → `{response['policy_id']}`"
+                reply_text += f"\n**Form:** {response['related_form']}"
 
-        st.markdown(reply_text)
+            if role in ("HR Staff", "HR Admin"):
+                reply_text += (
+                    f"\n\n---\n*[Staff view] Confidence: {response['confidence_level']} "
+                    f"(score: {response['score']:.3f})*"
+                )
 
-    st.session_state.messages.append({"role": "assistant", "content": reply_text})
+            st.markdown(reply_text)
+
+        st.session_state.messages.append({"role": "assistant", "content": reply_text})
