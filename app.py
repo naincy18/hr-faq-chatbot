@@ -1,8 +1,12 @@
 import streamlit as st
+import pandas as pd
 from retrieval import PolicyRetriever
 from confidence import build_response
+from logger import init_db, log_interaction, get_all_logs, get_stats
 
 st.set_page_config(page_title="HR Policy FAQ Chatbot", page_icon="💬")
+
+init_db()  # make sure the logs table exists before anything else runs
 
 
 @st.cache_resource
@@ -18,7 +22,7 @@ role = st.sidebar.selectbox(
     "Select your role:",
     options=["Employee", "HR Staff", "HR Admin"],
 )
-st.session_state.role = role  # store current role for use elsewhere in the app
+st.session_state.role = role
 
 st.sidebar.markdown("---")
 st.sidebar.caption(
@@ -28,10 +32,23 @@ st.sidebar.caption(
     "- **HR Admin**: chat + confidence scores + logs access"
 )
 
-# --- Admin-only panel placeholder (wired to real logs in Task 7) ---
+# --- Admin Panel: now shows real logs ---
 if role == "HR Admin":
-    with st.sidebar.expander("🔐 Admin Panel"):
-        st.write("Interaction logs will appear here once logging is implemented (Task 7).")
+    with st.sidebar.expander("🔐 Admin Panel", expanded=True):
+        stats = get_stats()
+        st.metric("Total questions", stats["total"])
+        st.metric("Handoff rate", f"{stats['handoff_rate']:.1f}%")
+
+        st.markdown("**Recent logs**")
+        logs = get_all_logs()
+        if logs:
+            logs_df = pd.DataFrame(logs)
+            st.dataframe(
+                logs_df[["timestamp", "role", "question", "policy_id", "confidence_level", "score", "handoff"]],
+                height=250,
+            )
+        else:
+            st.caption("No interactions logged yet.")
 
 st.title("💬 HR Policy FAQ Chatbot")
 st.caption(f"Ask me about leave, attendance, payroll, benefits, and other HR policies. (Logged in as: **{role}**)")
@@ -56,6 +73,9 @@ if user_question:
             top_result = results[0]
             response = build_response(top_result, user_question)
 
+            # Log every interaction, regardless of confidence level or handoff
+            log_interaction(role, user_question, response)
+
         if response["handoff"]:
             reply_text = response["answer_text"]
         else:
@@ -63,7 +83,6 @@ if user_question:
             reply_text += f"\n\n**Source:** {response['source_reference']} → `{response['policy_id']}`"
             reply_text += f"\n**Form:** {response['related_form']}"
 
-        # Role-based extra info: only HR Staff and HR Admin see the raw confidence score
         if role in ("HR Staff", "HR Admin"):
             reply_text += (
                 f"\n\n---\n*[Staff view] Confidence: {response['confidence_level']} "
