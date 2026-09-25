@@ -54,18 +54,48 @@ class PolicyRetriever:
 
 # --- Standalone test ---
 if __name__ == "__main__":
+
+    from confidence import build_response
+
     retriever = PolicyRetriever()
 
     test_questions = [
         "How many annual leave days do I get?",
         "What happens if I'm late to work?",
         "Can I work from home?",
-        "What is the capital of France?",  # should retrieve poorly - not HR related
+        "What is the capital of France?",
+        "Do we get a Diwali bonus?",
     ]
 
     for question in test_questions:
+
         print(f"Question: {question}")
-        results = retriever.retrieve(question, top_k=2)
-        for r in results:
-            print(f"  [{r['score']:.3f}] {r['policy_id']} — {r['title']}")
+
+        results = retriever.retrieve(
+            question,
+            top_k=1
+        )
+
+        top_result = results[0]
+
+        response = build_response(top_result, question)
+
+        print(
+            f"  Score: {response['score']:.3f} | "
+            f"Confidence: {response['confidence_level']}"
+        )
+
+        print(f"  Answer: {response['answer_text']}")
+
+        if response["policy_id"]:
+
+            print(
+                f"  Source: {response['source_reference']} "
+                f"→ {response['policy_id']}"
+            )
+
+            print(
+                f"  Form: {response['related_form']}"
+            )
+
         print()
