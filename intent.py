@@ -1,6 +1,7 @@
 
 # Rule-based intent detection for the HR chatbot
 
+
 INTENT_TRIGGERS = {
     "leave_entitlement": [
         "annual leave",
@@ -15,6 +16,19 @@ INTENT_TRIGGERS = {
         "how much leave",
         "leave balance",
         "leaves do i get",
+        "leaves am i entitled",
+        "how many days off",
+    ],
+
+    "leave_carry_forward": [
+        "carry forward",
+        "carry over",
+        "carried over",
+        "rollover",
+        "roll over",
+        "unused leave",
+        "leave into next year",
+        "leftover leave",
     ],
 
     "sick_leave": [
@@ -27,6 +41,7 @@ INTENT_TRIGGERS = {
         "when i'm sick",
         "when i am sick",
         "doctor's note",
+        "medical certificate needed",
     ],
 
     "wfh": [
@@ -37,6 +52,7 @@ INTENT_TRIGGERS = {
         "work remotely",
         "home office",
         "telecommute",
+        "work from a different location",
     ],
 }
 
@@ -69,17 +85,18 @@ def detect_intent(question):
 # Standalone tests
 if __name__ == "__main__":
     test_questions = [
-        "How many annual leave days do I get?",
-        "How many leaves do I get?",
-        "What is my leave entitlement?",
-        "How many sick days do I get?",
-        "Do I need a medical certificate?",
-        "Can I work from home?",
-        "What's the WFH policy?",
-        "Am I allowed to work remotely?",
-        "What is the capital of France?",
-        "How is my salary paid?",
-    ]
+    "How many annual leave days do I get?",
+    "How many leaves do I get?",
+    "What is my leave entitlement?",
+    "How many sick days do I get?",
+    "Do I need a medical certificate?",
+    "Can I work from home?",
+    "What's the WFH policy?",
+    "Am I allowed to work remotely?",
+    "Can unused leave be carried over?",
+    "What is the capital of France?",
+    "How is my salary paid?",
+]
 
     for question in test_questions:
         intent = detect_intent(question)
