@@ -6,7 +6,7 @@ DB_PATH = "logs/chatbot_logs.db"
 
 
 def init_db():
-    """Create the logs table if it doesn't already exist. Safe to call every app run."""
+    """Create the logs and escalations tables if they don't already exist. Safe to call every app run."""
     os.makedirs("logs", exist_ok=True)
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
@@ -21,6 +21,15 @@ def init_db():
             score REAL NOT NULL,
             handoff INTEGER NOT NULL,
             answer_text TEXT NOT NULL
+        )
+    """)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS escalations (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            timestamp TEXT NOT NULL,
+            role TEXT NOT NULL,
+            question TEXT NOT NULL,
+            is_urgent INTEGER NOT NULL
         )
     """)
     conn.commit()
@@ -73,3 +82,31 @@ def get_stats():
     conn.close()
     handoff_rate = (handoffs / total * 100) if total > 0 else 0
     return {"total": total, "handoffs": handoffs, "handoff_rate": handoff_rate}
+
+
+def log_escalation(role, question, is_urgent):
+    """Record whether the employee flagged a handoff question as urgent."""
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+        INSERT INTO escalations (timestamp, role, question, is_urgent)
+        VALUES (?, ?, ?, ?)
+    """, (
+        datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        role,
+        question,
+        1 if is_urgent else 0,
+    ))
+    conn.commit()
+    conn.close()
+
+
+def get_urgent_escalations():
+    """Return all escalations flagged as urgent, newest first — for Admin Panel."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM escalations WHERE is_urgent = 1 ORDER BY id DESC")
+    rows = [dict(row) for row in cursor.fetchall()]
+    conn.close()
+    return rows

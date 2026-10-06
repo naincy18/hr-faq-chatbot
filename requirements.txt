@@ -1,5 +1,7 @@
 pandas
 sentence-transformers
 scikit-learn
-ollama
 streamlit
+SpeechRecognition
+pyttsx3
+groq
